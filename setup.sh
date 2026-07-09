@@ -218,23 +218,35 @@ cp arch/x86/boot/bzImage "$KERNEL_DEST"
 ok "Kernel copied to $KERNEL_DEST"
 
 # ============================================================
-# 9/10  Patch airgeddon (if installed)
+# 9/10  Check WiFi tools & patch airgeddon
 # ============================================================
-step 9 "Patching airgeddon WSL2 compatibility..."
+step 9 "Checking WiFi auditing tools..."
+MISSING_TOOLS=""
+HAS_WIFITE=0
+HAS_AIRGEDDON=0
+
+if command -v wifite &>/dev/null; then
+    ok "wifite installed"
+    HAS_WIFITE=1
+else
+    warn "wifite not installed — install it: sudo apt install wifite -y"
+    MISSING_TOOLS="$MISSING_TOOLS wifite"
+fi
+
 AIRGEDDON_SCRIPT="/usr/share/airgeddon/airgeddon.sh"
 AIRGEDDON_PATCH="$REPO_DIR/airgeddon-wsl2.patch"
 
 if [ -f "$AIRGEDDON_SCRIPT" ]; then
+    HAS_AIRGEDDON=1
     if grep -q "WSL2 with custom kernel detected" "$AIRGEDDON_SCRIPT" 2>/dev/null; then
-        ok "airgeddon already patched"
+        ok "airgeddon installed & already patched for WSL2"
     elif [ -f "$AIRGEDDON_PATCH" ]; then
         sudo patch "$AIRGEDDON_SCRIPT" < "$AIRGEDDON_PATCH" 2>/dev/null
-        ok "airgeddon patched for WSL2"
-    else
-        warn "airgeddon patch not found, skipping"
+        ok "airgeddon installed & patched for WSL2"
     fi
 else
-    ok "airgeddon not installed, skipping"
+    warn "airgeddon not installed — install it: sudo apt install airgeddon -y"
+    MISSING_TOOLS="$MISSING_TOOLS airgeddon"
 fi
 
 # ============================================================
@@ -286,19 +298,36 @@ echo -e "  Kernel: ${CYAN}$KERNEL_DEST${NC}"
 echo -e "  Config: ${CYAN}$WSL_CONFIG${NC}"
 echo -e "  Log:    ${CYAN}$BUILD_LOG${NC}"
 echo ""
+
+# Warn about missing tools
+if [ -n "$MISSING_TOOLS" ]; then
+    echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${YELLOW}⚠ Missing tools:${MISSING_TOOLS}${NC}"
+    echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  Install now with:"
+    for tool in $MISSING_TOOLS; do
+        echo -e "    ${CYAN}sudo apt install ${tool} -y${NC}"
+    done
+    if echo "$MISSING_TOOLS" | grep -q "airgeddon"; then
+        echo ""
+        echo -e "  ${YELLOW}Note:${NC} airgeddon needs a WSL2 compatibility patch."
+        echo -e "  Install it first, then re-run this script to auto-patch,"
+        echo -e "  or apply manually:"
+        echo -e "    ${CYAN}sudo patch /usr/share/airgeddon/airgeddon.sh < ${REPO_DIR}/airgeddon-wsl2.patch${NC}"
+    fi
+    echo ""
+fi
+
 echo -e "  ${YELLOW}► Next: Restart WSL from Windows PowerShell:${NC}"
 echo -e "    ${CYAN}wsl --shutdown${NC}"
 echo ""
-echo -e "  ${YELLOW}► After restart, attach the Alfa adapter:${NC}"
+echo -e "  ${YELLOW}► After restart, use the daily helper:${NC}"
+echo -e "    ${CYAN}cd ~/wsl2-rtl8812au-fix && bash wifi.sh${NC}"
 echo ""
-echo -e "    ${YELLOW}Windows PowerShell (Admin):${NC}"
-echo -e "    ${CYAN}usbipd bind --busid <BUSID> --force${NC}"
-echo -e "    ${CYAN}usbipd attach --wsl --busid <BUSID>${NC}"
+echo -e "  ${YELLOW}► Then run your tool:${NC}"
+echo -e "    ${CYAN}sudo ip link set wlan0 down && sudo iw dev wlan0 set type monitor && sudo ip link set wlan0 up${NC}"
+echo -e "    ${CYAN}sudo wifite${NC}   ${YELLOW}or${NC}   ${CYAN}sudo airgeddon${NC}"
 echo ""
-echo -e "    ${YELLOW}WSL terminal:${NC}"
-echo -e "    ${CYAN}sudo modprobe rtw88_8812au${NC}"
-echo -e "    ${CYAN}sudo ip link set wlan0 down${NC}"
-echo -e "    ${CYAN}sudo iw dev wlan0 set type monitor${NC}"
-echo -e "    ${CYAN}sudo ip link set wlan0 up${NC}"
-echo ""
+
 exit 0

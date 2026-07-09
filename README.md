@@ -16,7 +16,13 @@ The in-tree `rtw88` driver uses `BIT(0)` for the 8051 MCU IO interface on all ch
 
 ## Quick Start (Automated)
 
-Two scripts handle everything:
+**Prerequisites:** Install WiFi auditing tools first (so setup.sh can patch them):
+
+```bash
+sudo apt install wifite airgeddon -y
+```
+
+Then two scripts handle everything:
 
 ### One-time setup (build custom kernel)
 
