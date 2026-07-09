@@ -1,0 +1,18 @@
+--- a/airgeddon.sh
++++ b/airgeddon.sh
+@@ -5,9 +5,9 @@ check_wsl() {
+ 
+ 	debug_print
+ 
+ 	if [ "${distro}" = "Microsoft" ]; then
+-		echo
+-		language_strings "${language}" 701 "red"
+-		language_strings "${language}" 115 "read"
+-		exit_code=1
+-		exit_script_option
++		# WSL2 custom kernel with wireless support — skipping block
++		language_strings "${language}" 701 "yellow"
++		echo " (WSL2 with custom kernel detected — continuing)"
++		return 0
+ 	fi
+ }
