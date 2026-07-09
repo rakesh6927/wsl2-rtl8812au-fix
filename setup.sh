@@ -16,7 +16,7 @@ die() { echo -e "${RED}Error: $*${NC}" >&2; exit 1; }
 step() { echo -e "${YELLOW}[$1/$TOTAL] $2${NC}"; }
 ok() { echo -e "  ${GREEN}✓${NC} $1"; }
 warn() { echo -e "  ${YELLOW}⚠${NC} $1"; }
-TOTAL=9
+TOTAL=10
 
 # ============================================================
 # 0. Pre-flight checks
@@ -218,9 +218,29 @@ cp arch/x86/boot/bzImage "$KERNEL_DEST"
 ok "Kernel copied to $KERNEL_DEST"
 
 # ============================================================
-# 9/9  Update .wslconfig
+# 9/10  Patch airgeddon (if installed)
 # ============================================================
-step 9 "Updating .wslconfig..."
+step 9 "Patching airgeddon WSL2 compatibility..."
+AIRGEDDON_SCRIPT="/usr/share/airgeddon/airgeddon.sh"
+AIRGEDDON_PATCH="$REPO_DIR/airgeddon-wsl2.patch"
+
+if [ -f "$AIRGEDDON_SCRIPT" ]; then
+    if grep -q "WSL2 with custom kernel detected" "$AIRGEDDON_SCRIPT" 2>/dev/null; then
+        ok "airgeddon already patched"
+    elif [ -f "$AIRGEDDON_PATCH" ]; then
+        sudo patch "$AIRGEDDON_SCRIPT" < "$AIRGEDDON_PATCH" 2>/dev/null
+        ok "airgeddon patched for WSL2"
+    else
+        warn "airgeddon patch not found, skipping"
+    fi
+else
+    ok "airgeddon not installed, skipping"
+fi
+
+# ============================================================
+# 10/10 Update .wslconfig
+# ============================================================
+step 10 "Updating .wslconfig..."
 WSL_CONFIG="/mnt/c/Users/$WIN_USER/.wslconfig"
 
 # Remove BOM if present
