@@ -14,12 +14,59 @@ The in-tree `rtw88` driver uses `BIT(0)` for the 8051 MCU IO interface on all ch
 
 ---
 
-## Instructions
+## Quick Start (Automated)
+
+Two scripts handle everything:
+
+### One-time setup (build custom kernel)
+
+```bash
+# Inside WSL:
+git clone https://github.com/rakesh6927/wsl2-rtl8812au-fix.git
+cd wsl2-rtl8812au-fix
+bash setup.sh
+```
+
+This auto-installs dependencies, clones the WSL2 kernel source, applies the patch, builds the kernel (~20 min), installs it, and updates `.wslconfig`.
+
+When it finishes, **restart WSL** from Windows PowerShell:
+
+```powershell
+wsl --shutdown
+```
+
+### Daily use (attach Alfa adapter)
+
+After reboot (or whenever you plug in the Alfa), run inside WSL:
+
+```bash
+cd ~/wsl2-rtl8812au-fix
+bash wifi.sh
+```
+
+This detects your Alfa, loads drivers, attaches it from Windows via usbipd, and verifies `wlan0` is ready. Handles bind/attach failures, vhci drops, and retries automatically.
+
+```bash
+bash wifi.sh --status    # Just show where adapters are
+bash wifi.sh --attach    # Force re-attach all adapters
+```
+
+After that, enable monitor mode and launch your tool:
+
+```bash
+sudo ip link set wlan0 down
+sudo iw dev wlan0 set type monitor
+sudo ip link set wlan0 up
+sudo wifite      # or sudo airgeddon
+```
+
+---
+
+## Manual Setup (if you prefer step-by-step)
 
 ### Step 1 — Clone this repo (in WSL)
 
 ```bash
-# Run INSIDE WSL (Kali/Ubuntu):
 git clone https://github.com/rakesh6927/wsl2-rtl8812au-fix.git
 cd wsl2-rtl8812au-fix
 ```
@@ -27,7 +74,6 @@ cd wsl2-rtl8812au-fix
 ### Step 2 — Clone WSL2 kernel source (in WSL)
 
 ```bash
-# Still inside WSL:
 cd ~
 git clone --branch linux-msft-wsl-6.18.33.1 --depth 1 \
   https://github.com/microsoft/WSL2-Linux-Kernel.git
@@ -37,7 +83,6 @@ cd WSL2-Linux-Kernel
 ### Step 3 — Apply the patch (in WSL)
 
 ```bash
-# From ~/WSL2-Linux-Kernel:
 patch -p1 < ~/wsl2-rtl8812au-fix/0001-rtw88-fix-RTL8812AU-8051-firmware-boot-over-USB.patch
 ```
 
@@ -76,8 +121,6 @@ Open **File Explorer**, navigate to `C:\Users\<YourUsername>\`, and edit `.wslco
 kernel=C:\\Users\\<YourUsername>\\wsl-custom-kernel
 ```
 
-> Replace `<YourUsername>` with your actual Windows username. Double backslashes are required.
-
 ### Step 9 — Restart WSL (in Windows PowerShell or CMD)
 
 ```powershell
@@ -92,56 +135,25 @@ Then reopen your WSL terminal.
 sudo apt install firmware-realtek -y
 ```
 
-### Step 11 — Verify the new kernel (in WSL)
+### Step 11 — Attach adapter and use
 
-```bash
-uname -r
-# Should show: 6.18.33.1-microsoft-standard-WSL2
-
-zcat /proc/config.gz | grep CONFIG_RTW88_8812AU
-# Should show: CONFIG_RTW88_8812AU=m
-```
-
----
-
-## USB Passthrough (each time you plug in the adapter)
-
-### Attach from Windows (PowerShell as Administrator)
-
+From Windows PowerShell (Admin):
 ```powershell
-# Find the Alfa's BUSID:
-usbipd list
-
-# Bind and attach (replace <BUSID> with actual ID, usually 1-1):
+usbipd list                          # Find BUSID
 usbipd bind --busid <BUSID> --force
 usbipd attach --wsl --busid <BUSID>
 ```
 
-### Load the driver (in WSL)
-
+In WSL:
 ```bash
-sudo modprobe vhci_hcd
 sudo modprobe rtw88_8812au
-```
-
-Check that `wlan0` appears:
-```bash
-iwconfig
-```
-
----
-
-## Enable Monitor Mode (in WSL)
-
-```bash
 sudo ip link set wlan0 down
 sudo iw dev wlan0 set type monitor
 sudo ip link set wlan0 up
-
-# Verify:
-iwconfig wlan0
-# Should show: Mode:Monitor
+sudo wifite
 ```
+
+> You can also use `bash wifi.sh` instead of the manual attach steps above.
 
 ---
 
