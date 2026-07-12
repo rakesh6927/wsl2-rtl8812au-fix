@@ -1,3 +1,34 @@
+diff --git a/drivers/net/wireless/realtek/rtw88/fw.c b/drivers/net/wireless/realtek/rtw88/fw.c
+index c68a9fff6..86b4c01ab 100644
+--- a/drivers/net/wireless/realtek/rtw88/fw.c
++++ b/drivers/net/wireless/realtek/rtw88/fw.c
+@@ -1517,9 +1517,23 @@ int rtw_fw_write_data_rsvd_page(struct rtw_dev *rtwdev, u16 pg_addr,
+ 		bcn_valid_mask = BIT_BCN_VALID_V1;
+ 	}
+ 
+-	if (!check_hw_ready(rtwdev, bcn_valid_addr, bcn_valid_mask, 1)) {
+-		rtw_err(rtwdev, "error beacon valid\n");
+-		ret = -EBUSY;
++	/* USB/IP needs longer timeout for beacon valid */
++	if (rtw_hci_type(rtwdev) == RTW_HCI_TYPE_USB && rtw_chip_wcpu_8051(rtwdev)) {
++		int try;
++		for (try = 0; try < 50; try++) {
++			if (rtw_read32_mask(rtwdev, bcn_valid_addr, bcn_valid_mask) == 1)
++				break;
++			msleep(50);
++		}
++		if (try >= 50) {
++			rtw_err(rtwdev, "error beacon valid after 2.5s\n");
++			ret = -EBUSY;
++		}
++	} else {
++		if (!check_hw_ready(rtwdev, bcn_valid_addr, bcn_valid_mask, 1)) {
++			rtw_err(rtwdev, "error beacon valid\n");
++			ret = -EBUSY;
++		}
+ 	}
+ 
+ restore:
 diff --git a/drivers/net/wireless/realtek/rtw88/mac.c b/drivers/net/wireless/realtek/rtw88/mac.c
 index eaa928bab..13ee10551 100644
 --- a/drivers/net/wireless/realtek/rtw88/mac.c
